@@ -105,12 +105,12 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User request) {
+    public ResponseEntity<?> login(@jakarta.validation.Valid @RequestBody com.insurai.dto.LoginRequest request) {
         // 1. Try User Login
         var userOpt = userRepository.findByEmail(request.getEmail());
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            if (request.getPassword() == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 return ResponseEntity.status(401).body("Invalid email or password");
             }
 
@@ -138,7 +138,7 @@ public class AuthController {
         var companyOpt = companyRepository.findByEmail(request.getEmail());
         if (companyOpt.isPresent()) {
             com.insurai.model.Company company = companyOpt.get();
-            if (!passwordEncoder.matches(request.getPassword(), company.getPassword())) {
+            if (request.getPassword() == null || !passwordEncoder.matches(request.getPassword(), company.getPassword())) {
                 return ResponseEntity.status(401).body("Invalid email or password");
             }
 
