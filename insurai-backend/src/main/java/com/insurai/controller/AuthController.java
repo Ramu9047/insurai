@@ -11,10 +11,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "http://localhost:3000")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private final UserRepository userRepository;
     private final com.insurai.repository.CompanyRepository companyRepository;
@@ -160,7 +165,7 @@ public class AuthController {
             emailService.send(email, "Reset Your Password", "Click here to reset: " + link);
             return ResponseEntity.ok("Reset link sent to email.");
         } catch (Exception e) {
-            System.err.println("Email failed: " + e.getMessage());
+            logger.error("Email failed to send to {}: {}", email, e.getMessage());
             // For dev/demo only: Return link if email fails
             return ResponseEntity.ok("Email failed. Dev Link: " + link);
         }

@@ -96,7 +96,8 @@ public class AIService {
             headers.setBearerAuth(apiKey);
 
             java.util.Map<String, Object> body = new java.util.HashMap<>();
-            body.put("model", "llama-3.3-70b-versatile");
+            String model = groqProperties.getModel() != null ? groqProperties.getModel() : "llama-3.3-70b-versatile";
+            body.put("model", model);
             body.put("messages", java.util.List.of(
                     java.util.Map.of("role", "system", "content",
                             "You are InsurAI, an intelligent, professional, and friendly insurance assistant. Your goal is to help users with their insurance needs. Keep answers concise (under 3 lines) unless asked for detail. Use emoji sparingly."),

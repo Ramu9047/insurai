@@ -4,6 +4,11 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @Entity
+@Table(name = "user_policies", indexes = {
+    @Index(name = "idx_user_policy_user", columnList = "user_id"),
+    @Index(name = "idx_user_policy_status", columnList = "status"),
+    @Index(name = "idx_user_policy_workflow", columnList = "workflow_status")
+})
 public class UserPolicy {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

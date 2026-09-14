@@ -57,7 +57,7 @@ public class AdminController {
             m.put("bookings", bookingService.getAllBookings(user).stream().count()); // filtered by user in service
         } else {
             m.put("users", userRepo.count());
-            m.put("agents", (long) userRepo.findByRole("AGENT").size());
+            m.put("agents", userRepo.countByRole("AGENT"));
             m.put("bookings", (long) bookingService.getAllBookings(null).size());
         }
         return m;

@@ -10,8 +10,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class TestDataGeneratorService {
+
+    private static final Logger logger = LoggerFactory.getLogger(TestDataGeneratorService.class);
 
     private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
@@ -52,7 +57,7 @@ public class TestDataGeneratorService {
     }
 
     private void generateCompaniesAndPolicies() {
-        System.out.println("🌱 Generating Companies and Policies...");
+        logger.info("Generating Companies and Policies...");
 
         String[][] companies = {
                 { "SafeGuard", "safeguard@example.com", "REG-98255" },

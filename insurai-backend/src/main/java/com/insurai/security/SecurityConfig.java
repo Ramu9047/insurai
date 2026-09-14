@@ -33,10 +33,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults()) // Enable CORS
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/ws/**").permitAll() // Allow auth, websocket
-                        .requestMatchers("/api/ai/**").permitAll() // Allow AI endpoints
-                        .requestMatchers("/api/test/**").permitAll() // Allow Test Data Generation
-                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/auth/**", "/ws/**", "/error").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
  * Implements structured approval flow with AI-assisted decision making
  */
 @Service
+@Transactional
 public class AppointmentWorkflowService {
 
         private final BookingRepository bookingRepository;

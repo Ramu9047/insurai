@@ -3,7 +3,11 @@ package com.insurai.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_user_role", columnList = "role"),
+    @Index(name = "idx_user_email", columnList = "email"),
+    @Index(name = "idx_user_is_active", columnList = "isActive")
+})
 public class User {
 
     @Id

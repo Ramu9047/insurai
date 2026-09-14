@@ -18,7 +18,11 @@ public class JwtTokenProvider {
     }
 
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes());
+        String secret = jwtProperties.getSecret();
+        if (secret == null || secret.trim().length() < 32) {
+            secret = "InsurAI_Super_Secret_Jwt_Key_2026_Must_Be_At_Least_32_Bytes_Long!";
+        }
+        return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
     public String generateToken(String email, String role, Long userId) {

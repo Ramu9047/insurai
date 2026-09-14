@@ -17,6 +17,7 @@ import java.util.Map;
  * Manages state transitions and lifecycle events for bookings
  */
 @Service
+@Transactional
 public class BookingLifecycleService {
 
     private static final Logger logger = LoggerFactory.getLogger(BookingLifecycleService.class);

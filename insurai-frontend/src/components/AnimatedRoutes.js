@@ -8,7 +8,6 @@ import Dashboard from "../pages/Dashboard";
 import ChooseAgent from "../pages/ChooseAgent";
 import ScheduleAppointment from "../pages/ScheduleAppointment";
 import AgentRequests from "../pages/AgentRequests";
-import Plans from "../pages/Plans";
 import PlansEnhanced from "../pages/PlansEnhanced";
 import MyClaims from "../pages/MyClaims";
 import MyBookings from "../pages/MyBookings";
@@ -78,7 +77,7 @@ export default function AnimatedRoutes() {
                 <Route element={<RequireAuth allowedRoles={['USER', 'AGENT', 'SUPER_ADMIN', 'COMPANY', 'COMPANY_ADMIN']} />}>
                     <Route path="/dashboard" element={<PageWrapper><Dashboard /></PageWrapper>} />
                     <Route path="/notifications" element={<PageWrapper><Notifications /></PageWrapper>} />
-                    <Route path="/plans" element={<PageWrapper><Plans /></PageWrapper>} />
+                    <Route path="/plans" element={<PageWrapper><PlansEnhanced /></PageWrapper>} />
                     <Route path="/plans-enhanced" element={<PageWrapper><PlansEnhanced /></PageWrapper>} />
                 </Route>
 
