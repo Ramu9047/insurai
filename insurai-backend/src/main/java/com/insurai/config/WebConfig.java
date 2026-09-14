@@ -7,8 +7,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private com.insurai.security.RateLimitInterceptor rateLimitInterceptor;
+    private final com.insurai.security.RateLimitInterceptor rateLimitInterceptor;
+
+    public WebConfig(com.insurai.security.RateLimitInterceptor rateLimitInterceptor) {
+        this.rateLimitInterceptor = rateLimitInterceptor;
+    }
 
     @Override
     public void addInterceptors(

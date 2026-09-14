@@ -2,12 +2,9 @@ package com.insurai.repository;
 
 import com.insurai.model.SmartReminder;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Repository
 public interface SmartReminderRepository extends JpaRepository<SmartReminder, Long> {
 
     List<SmartReminder> findByUserIdAndSentFalse(Long userId);
