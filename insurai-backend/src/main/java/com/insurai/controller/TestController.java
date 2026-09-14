@@ -9,9 +9,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/test")
 public class TestController {
+
+    private static final Logger logger = LoggerFactory.getLogger(TestController.class);
 
     private final TestDataGeneratorService testDataGeneratorService;
 
@@ -21,9 +26,10 @@ public class TestController {
 
     /**
      * Trigger large-scale test data generation.
-     * Accessible publicly for development/testing purposes.
+     * Restricted to SUPER_ADMIN authority.
      */
     @PostMapping("/seed")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> seedData() {
         try {
             long startTime = System.currentTimeMillis();
@@ -35,7 +41,7 @@ public class TestController {
             response.put("duration_ms", duration);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Data generation failed: ", e);
             Map<String, String> error = new HashMap<>();
             error.put("error", "Data generation failed: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);

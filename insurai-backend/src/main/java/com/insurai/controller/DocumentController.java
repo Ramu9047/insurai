@@ -36,14 +36,35 @@ public class DocumentController {
     // --- User Endpoints ---
 
     @GetMapping("/users/{userId}/documents")
-    public List<Document> getUserDocuments(@PathVariable Long userId) {
+    public List<Document> getUserDocuments(
+            @PathVariable Long userId,
+            @com.insurai.security.CurrentUser User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        boolean isPrivileged = "AGENT".equals(currentUser.getRole()) || "COMPANY_ADMIN".equals(currentUser.getRole())
+                || "SUPER_ADMIN".equals(currentUser.getRole());
+        if (!isPrivileged && !currentUser.getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot view documents of another user");
+        }
         return documentRepo.findByUserId(userId);
     }
 
     @PostMapping("/users/{userId}/documents")
-    public Document uploadDocument(@PathVariable Long userId,
+    public Document uploadDocument(
+            @PathVariable Long userId,
             @RequestParam("file") MultipartFile file,
-            @RequestParam("type") String type) throws IOException {
+            @RequestParam("type") String type,
+            @com.insurai.security.CurrentUser User currentUser) throws IOException {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        boolean isPrivileged = "AGENT".equals(currentUser.getRole()) || "COMPANY_ADMIN".equals(currentUser.getRole())
+                || "SUPER_ADMIN".equals(currentUser.getRole());
+        if (!isPrivileged && !currentUser.getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot upload document for another user");
+        }
+
         User user = userRepo.findById(java.util.Objects.requireNonNull(userId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -92,7 +113,7 @@ public class DocumentController {
     // --- Agent/Admin Endpoints ---
 
     @PatchMapping("/documents/{docId}/verify")
-    @PreAuthorize("hasRole('AGENT') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('AGENT') or hasRole('ADMIN') or hasRole('COMPANY_ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> verifyDocument(@PathVariable Long docId, Authentication auth) {
         Document doc = documentRepo.findById(java.util.Objects.requireNonNull(docId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
@@ -108,7 +129,7 @@ public class DocumentController {
     }
 
     @PatchMapping("/documents/{docId}/reject")
-    @PreAuthorize("hasRole('AGENT') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('AGENT') or hasRole('ADMIN') or hasRole('COMPANY_ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> rejectDocument(@PathVariable Long docId, @RequestBody Map<String, String> body) {
         Document doc = documentRepo.findById(java.util.Objects.requireNonNull(docId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
@@ -122,11 +143,21 @@ public class DocumentController {
     }
 
     @DeleteMapping("/documents/{docId}")
-    public ResponseEntity<?> deleteDocument(@PathVariable Long docId) {
-        java.util.Objects.requireNonNull(docId);
-        if (!documentRepo.existsById(docId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    public ResponseEntity<?> deleteDocument(
+            @PathVariable Long docId,
+            @com.insurai.security.CurrentUser User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
+        Document doc = documentRepo.findById(java.util.Objects.requireNonNull(docId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
+
+        boolean isPrivileged = "AGENT".equals(currentUser.getRole()) || "COMPANY_ADMIN".equals(currentUser.getRole())
+                || "SUPER_ADMIN".equals(currentUser.getRole());
+        if (!isPrivileged && (doc.getUser() == null || !currentUser.getId().equals(doc.getUser().getId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot delete another user's document");
+        }
+
         documentRepo.deleteById(docId);
         return ResponseEntity.ok(Map.of("message", "Document deleted"));
     }

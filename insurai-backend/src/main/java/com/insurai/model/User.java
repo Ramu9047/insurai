@@ -16,12 +16,21 @@ public class User {
 
     private String name;
     private String email;
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String password;
     private String role;
 
     private Boolean available = false;
     private Boolean verified = false;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String resetToken;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private java.time.LocalDateTime resetTokenExpiry;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String verificationToken;
 
     private Boolean isActive = true; // For Admin activation/deactivation
 
@@ -246,5 +255,21 @@ public class User {
 
     public void setMappingCompanyId(Long mappingCompanyId) {
         this.mappingCompanyId = mappingCompanyId;
+    }
+
+    public java.time.LocalDateTime getResetTokenExpiry() {
+        return resetTokenExpiry;
+    }
+
+    public void setResetTokenExpiry(java.time.LocalDateTime resetTokenExpiry) {
+        this.resetTokenExpiry = resetTokenExpiry;
+    }
+
+    public String getVerificationToken() {
+        return verificationToken;
+    }
+
+    public void setVerificationToken(String verificationToken) {
+        this.verificationToken = verificationToken;
     }
 }

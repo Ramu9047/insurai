@@ -47,15 +47,27 @@ public class AIFeaturesController {
          * POST /api/ai/recommendations
          */
         @PostMapping("/recommendations")
-        @PreAuthorize("hasRole('USER')")
+        @PreAuthorize("hasAnyRole('USER','AGENT','COMPANY_ADMIN','SUPER_ADMIN')")
         public ResponseEntity<List<AIRecommendationEngine.PolicyRecommendation>> getRecommendations(
-                        @RequestBody Map<String, Object> request) {
+                        @RequestBody Map<String, Object> request,
+                        @com.insurai.security.CurrentUser User currentUser) {
+                if (currentUser == null) {
+                        throw new org.springframework.web.server.ResponseStatusException(
+                                        org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required");
+                }
 
                 Object userIdObj = request.get("userId");
                 if (userIdObj == null) {
                         throw new IllegalArgumentException("userId is required");
                 }
                 Long userId = Long.valueOf(userIdObj.toString());
+
+                boolean isPrivileged = "AGENT".equals(currentUser.getRole()) || "COMPANY_ADMIN".equals(currentUser.getRole())
+                                || "SUPER_ADMIN".equals(currentUser.getRole());
+                if (!isPrivileged && !currentUser.getId().equals(userId)) {
+                        throw new org.springframework.web.server.ResponseStatusException(
+                                        org.springframework.http.HttpStatus.FORBIDDEN, "Access denied: Cannot request recommendations for another user");
+                }
 
                 Long rejectedPolicyId = request.get("rejectedPolicyId") != null
                                 ? Long.valueOf(request.get("rejectedPolicyId").toString())
@@ -84,10 +96,22 @@ public class AIFeaturesController {
          * GET /api/ai/recommendations/{userId}
          */
         @GetMapping("/recommendations/{userId}")
-        @PreAuthorize("hasAnyRole('USER', 'AGENT')")
+        @PreAuthorize("hasAnyRole('USER', 'AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
         public ResponseEntity<List<AIRecommendationEngine.PolicyRecommendation>> getUserRecommendations(
                         @PathVariable Long userId,
-                        @RequestParam(defaultValue = "5") int limit) {
+                        @RequestParam(defaultValue = "5") int limit,
+                        @com.insurai.security.CurrentUser User currentUser) {
+                if (currentUser == null) {
+                        throw new org.springframework.web.server.ResponseStatusException(
+                                        org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required");
+                }
+
+                boolean isPrivileged = "AGENT".equals(currentUser.getRole()) || "COMPANY_ADMIN".equals(currentUser.getRole())
+                                || "SUPER_ADMIN".equals(currentUser.getRole());
+                if (!isPrivileged && !currentUser.getId().equals(userId)) {
+                        throw new org.springframework.web.server.ResponseStatusException(
+                                        org.springframework.http.HttpStatus.FORBIDDEN, "Access denied: Cannot view recommendations of another user");
+                }
 
                 User user = userRepository.findById(java.util.Objects.requireNonNull(userId))
                                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -103,15 +127,27 @@ public class AIFeaturesController {
          * POST /api/ai/assistant/chat
          */
         @PostMapping("/assistant/chat")
-        @PreAuthorize("hasRole('USER')")
+        @PreAuthorize("hasAnyRole('USER', 'AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
         public ResponseEntity<AIAssistantService.AssistantResponse> chatWithAssistant(
-                        @RequestBody Map<String, Object> request) {
+                        @RequestBody Map<String, Object> request,
+                        @com.insurai.security.CurrentUser User currentUser) {
+                if (currentUser == null) {
+                        throw new org.springframework.web.server.ResponseStatusException(
+                                        org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required");
+                }
 
                 Object userIdObj = request.get("userId");
                 if (userIdObj == null) {
                         throw new IllegalArgumentException("userId is required");
                 }
                 Long userId = Long.valueOf(userIdObj.toString());
+
+                boolean isPrivileged = "AGENT".equals(currentUser.getRole()) || "COMPANY_ADMIN".equals(currentUser.getRole())
+                                || "SUPER_ADMIN".equals(currentUser.getRole());
+                if (!isPrivileged && !currentUser.getId().equals(userId)) {
+                        throw new org.springframework.web.server.ResponseStatusException(
+                                        org.springframework.http.HttpStatus.FORBIDDEN, "Access denied: Cannot chat on behalf of another user");
+                }
 
                 Object queryObj = request.get("query");
                 if (queryObj == null) {

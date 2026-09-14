@@ -26,7 +26,9 @@ public class NotificationController {
     @Autowired
     private com.insurai.repository.CompanyRepository companyRepo;
 
+    // Access rule: Authenticated users/companies get their own unread notifications
     @GetMapping
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
     public List<Notification> getUnreadNotifications(Authentication auth) {
         String email = auth.getName();
         return userRepo.findByEmail(email)
@@ -36,12 +38,16 @@ public class NotificationController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User/Company not found"));
     }
 
+    // Access rule: Authenticated user can mark their notification as read
     @PutMapping("/{id}/read")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
     public void markAsRead(@PathVariable long id) {
         notificationService.markAsRead(id);
     }
 
+    // Access rule: Authenticated user can mark all their notifications as read
     @PutMapping("/read-all")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
     public void markAllAsRead(Authentication auth) {
         String email = auth.getName();
         userRepo.findByEmail(email).ifPresent(u -> notificationService.markAllAsRead(u.getId()));

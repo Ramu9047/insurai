@@ -17,10 +17,18 @@ public class JwtTokenProvider {
         this.jwtProperties = jwtProperties;
     }
 
+    @jakarta.annotation.PostConstruct
+    public void validateSecret() {
+        String secret = jwtProperties.getSecret();
+        if (secret == null || secret.trim().length() < 32) {
+            throw new IllegalStateException("JWT secret (jwt.secret) must be provided and be at least 32 characters long.");
+        }
+    }
+
     private SecretKey getSigningKey() {
         String secret = jwtProperties.getSecret();
         if (secret == null || secret.trim().length() < 32) {
-            secret = "InsurAI_Super_Secret_Jwt_Key_2026_Must_Be_At_Least_32_Bytes_Long!";
+            throw new IllegalStateException("JWT secret (jwt.secret) must be provided and be at least 32 characters long.");
         }
         return Keys.hmacShaKeyFor(secret.getBytes());
     }

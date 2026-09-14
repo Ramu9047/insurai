@@ -43,47 +43,54 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody User user, org.springframework.security.core.Authentication auth) {
-        if (user.getEmail() == null || user.getPassword() == null || user.getRole() == null) {
-            return ResponseEntity.badRequest().body("Missing required fields");
-        }
-
+    public ResponseEntity<?> register(
+            @jakarta.validation.Valid @RequestBody com.insurai.dto.RegisterRequest req,
+            org.springframework.security.core.Authentication auth) {
         // Security: Block SuperAdmin creation
-        if ("SUPER_ADMIN".equalsIgnoreCase(user.getRole())) {
+        if ("SUPER_ADMIN".equalsIgnoreCase(req.getRole())) {
             return ResponseEntity.status(403).body("Registration is restricted for this role.");
         }
 
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+        if (userRepository.findByEmail(req.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body("Email already exists");
         }
 
+        User user = new User();
+        user.setName(req.getName());
+        user.setEmail(req.getEmail());
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
+        user.setRole(req.getRole());
+
+        // Profile fields
+        user.setAge(req.getAge());
+        user.setPhone(req.getPhone());
+        user.setIncome(req.getIncome());
+        user.setDependents(req.getDependents());
+        user.setHealthInfo(req.getHealthInfo());
+        user.setAddress(req.getAddress());
+        user.setSpecialization(req.getSpecialization());
+        user.setBio(req.getBio());
+
+        // Safe Defaults - Server enforced
         user.setAvailable(false);
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setVerified(false);
         user.setIsActive(true);
 
-        // Handle Company assignment
-        // Case 1: Created by Super Admin or explicit company ID provided
-        if (user.getMappingCompanyId() != null) {
-            Long cId = user.getMappingCompanyId();
-            companyRepository.findById(java.util.Objects.requireNonNull(cId)).ifPresent(user::setCompany);
-        }
-        // Case 2: Created by Company Admin (automatic mapping for all roles they
-        // create)
-        else if (auth != null && auth.isAuthenticated()) {
-            // Check if creator is a Super Admin - they might be registering without
-            // explicit companyId
-            // but usually they use the dropdown. If they don't, we don't auto-assign.
+        String verificationToken = UUID.randomUUID().toString();
+        user.setVerificationToken(verificationToken);
 
+        // Handle Company assignment
+        if (req.getCompanyId() != null) {
+            Long cId = req.getCompanyId();
+            companyRepository.findById(java.util.Objects.requireNonNull(cId)).ifPresent(user::setCompany);
+        } else if (auth != null && auth.isAuthenticated()) {
             String creatorEmail = auth.getName();
-            // Check if creator is a User (e.g., a COMPANY_ADMIN role in users table)
             userRepository.findByEmail(creatorEmail).ifPresent(currentUser -> {
                 if (currentUser.getCompany() != null) {
                     user.setCompany(currentUser.getCompany());
                 }
             });
 
-            // If not found in users or no company there, check if creator is a Company
-            // entity itself
             if (user.getCompany() == null) {
                 companyRepository.findByEmail(creatorEmail).ifPresent(user::setCompany);
             }
@@ -135,7 +142,7 @@ public class AuthController {
                 return ResponseEntity.status(401).body("Invalid email or password");
             }
 
-            if (Boolean.FALSE.equals(company.getIsActive())) { // Assuming Company has isActive
+            if (Boolean.FALSE.equals(company.getIsActive())) {
                 return ResponseEntity.status(403).body("Company account is deactivated. Contact Admin.");
             }
 
@@ -143,7 +150,7 @@ public class AuthController {
             String token = jwtTokenProvider.generateToken(company.getEmail(), "COMPANY", company.getId());
 
             Map<String, Object> response = new HashMap<>();
-            response.put("user", company); // Sends company object with role "COMPANY_ADMIN" via getter
+            response.put("user", company);
             response.put("token", token);
 
             return ResponseEntity.ok(response);
@@ -154,31 +161,54 @@ public class AuthController {
 
     @GetMapping("/forgot")
     public ResponseEntity<?> forgot(@RequestParam String email) {
-        User u = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
-        String token = UUID.randomUUID().toString();
-        u.setResetToken(token);
-        userRepository.save(u);
-
-        // Send Email
-        String link = "http://localhost:3000/reset-password?token=" + token;
-        try {
-            emailService.send(email, "Reset Your Password", "Click here to reset: " + link);
-            return ResponseEntity.ok("Reset link sent to email.");
-        } catch (Exception e) {
-            logger.error("Email failed to send to {}: {}", email, e.getMessage());
-            // For dev/demo only: Return link if email fails
-            return ResponseEntity.ok("Email failed. Dev Link: " + link);
+        String responseMsg = "If that email exists, a reset link has been sent.";
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.ok(responseMsg);
         }
+
+        var userOpt = userRepository.findByEmail(email);
+        if (userOpt.isPresent()) {
+            User u = userOpt.get();
+            String token = UUID.randomUUID().toString();
+            u.setResetToken(token);
+            u.setResetTokenExpiry(java.time.LocalDateTime.now().plusMinutes(30));
+            userRepository.save(u);
+
+            String link = "http://localhost:3000/reset-password?token=" + token;
+            try {
+                emailService.send(email, "Reset Your Password", "Click here to reset: " + link);
+            } catch (Exception e) {
+                logger.error("Email failed to send to {}: {}", email, e.getMessage());
+            }
+        }
+
+        return ResponseEntity.ok(responseMsg);
     }
 
     @PostMapping("/reset")
     public ResponseEntity<?> reset(@RequestBody Map<String, String> payload) {
-        String token = payload.get("token");
-        String newPassword = payload.get("newPassword");
+        String token = payload != null ? payload.get("token") : null;
+        String newPassword = payload != null ? payload.get("newPassword") : null;
 
-        User u = userRepository.findByResetToken(token).orElseThrow(() -> new RuntimeException("Invalid token"));
+        if (token == null || token.isBlank()) {
+            return ResponseEntity.badRequest().body("Reset token is required");
+        }
+        if (newPassword == null || newPassword.length() < 8) {
+            return ResponseEntity.badRequest().body("New password must be at least 8 characters");
+        }
+
+        User u = userRepository.findByResetToken(token)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid or expired token"));
+
+        if (u.getResetTokenExpiry() == null || u.getResetTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Reset token has expired");
+        }
+
         u.setPassword(passwordEncoder.encode(newPassword));
         u.setResetToken(null);
+        u.setResetTokenExpiry(null);
         userRepository.save(u);
 
         return ResponseEntity.ok("Password updated successfully");
@@ -208,11 +238,17 @@ public class AuthController {
     }
 
     @GetMapping("/verify")
-    public String verify(@RequestParam String email) {
-        User u = userRepository.findByEmail(email).orElseThrow();
+    public ResponseEntity<?> verify(@RequestParam String token) {
+        if (token == null || token.isBlank()) {
+            return ResponseEntity.badRequest().body("Verification token is required");
+        }
+        User u = userRepository.findByVerificationToken(token)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid or expired verification token"));
         u.setVerified(true);
+        u.setVerificationToken(null);
         userRepository.save(u);
-        return "Account verified successfully!";
+        return ResponseEntity.ok("Account verified successfully!");
     }
 
     @GetMapping("/health")
