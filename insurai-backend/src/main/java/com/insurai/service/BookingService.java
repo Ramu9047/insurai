@@ -42,6 +42,11 @@ public class BookingService {
         this.userPolicyRepo = userPolicyRepo;
     }
 
+    public Booking getBookingById(@org.springframework.lang.NonNull Long id) {
+        return bookingRepo.findById(java.util.Objects.requireNonNull(id))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+    }
+
     public double predictSuccess(@org.springframework.lang.NonNull Long bookingId) {
         Booking booking = bookingRepo.findById(java.util.Objects.requireNonNull(bookingId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));

@@ -98,6 +98,23 @@ public class AppointmentWorkflowService {
                 return saved;
         }
 
+        private void validateAgentAssignment(Booking booking, long callingUserId) {
+                User callingUser = userRepository.findById(callingUserId)
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+                // Privileged roles (SUPER_ADMIN, COMPANY_ADMIN) can override agent assignment.
+                boolean isPrivileged = callingUser.getRole() != null &&
+                                ("SUPER_ADMIN".equalsIgnoreCase(callingUser.getRole()) ||
+                                 "COMPANY_ADMIN".equalsIgnoreCase(callingUser.getRole()));
+
+                if (!isPrivileged) {
+                        if (booking.getAgent() == null || !booking.getAgent().getId().equals(callingUser.getId())) {
+                                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                                                "Access denied: You are not the assigned agent for this appointment");
+                        }
+                }
+        }
+
         /**
          * PHASE 2 - SCENARIO 1: Agent approves meeting
          * Status: REQUESTED -> MEETING_APPROVED
@@ -107,6 +124,8 @@ public class AppointmentWorkflowService {
                 Booking booking = bookingRepository.findById(bookingId)
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Booking not found"));
+                validateAgentAssignment(booking, agentId);
+
                 User agent = userRepository.findById(agentId)
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Agent not found"));
@@ -159,6 +178,7 @@ public class AppointmentWorkflowService {
                 Booking booking = bookingRepository.findById(bookingId)
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Booking not found"));
+                validateAgentAssignment(booking, agentId);
 
                 if (!List.of("REQUESTED", "MEETING_APPROVED").contains(booking.getStatus())) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -193,6 +213,7 @@ public class AppointmentWorkflowService {
                 Booking booking = bookingRepository.findById(bookingId)
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Booking not found"));
+                validateAgentAssignment(booking, agentId);
 
                 if (!"CONSULTED".equals(booking.getStatus())) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -250,6 +271,7 @@ public class AppointmentWorkflowService {
                 Booking booking = bookingRepository.findById(bookingId)
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Booking not found"));
+                validateAgentAssignment(booking, agentId);
 
                 if (rejectionReason == null || rejectionReason.trim().isEmpty()) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,

@@ -130,10 +130,29 @@ public class BookingController {
         bookingService.blockSlot(agentId, request.getStart(), request.getEnd());
     }
 
-    // Access rule: Authenticated participants can reschedule booking
+    // Access rule: Authenticated participants (booking user, assigned agent, or admin) can reschedule booking
     @PutMapping("/{id}/reschedule")
     @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
-    public Booking reschedule(@PathVariable Long id, @RequestBody BookingRequest request) {
+    public Booking reschedule(
+            @PathVariable Long id,
+            @RequestBody BookingRequest request,
+            @com.insurai.security.CurrentUser com.insurai.model.User currentUser) {
+        if (currentUser == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+
+        Booking booking = bookingService.getBookingById(id);
+        boolean isAdmin = currentUser.getRole() != null &&
+                ("SUPER_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "COMPANY_ADMIN".equalsIgnoreCase(currentUser.getRole()));
+        boolean isUserOwner = booking.getUser() != null && currentUser.getId().equals(booking.getUser().getId());
+        boolean isAgentOwner = booking.getAgent() != null && currentUser.getId().equals(booking.getAgent().getId());
+
+        if (!isAdmin && !isUserOwner && !isAgentOwner) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Access denied: You are not a participant in this booking");
+        }
+
         return bookingService.rescheduleBooking(id, request.getStart(), request.getEnd());
     }
 

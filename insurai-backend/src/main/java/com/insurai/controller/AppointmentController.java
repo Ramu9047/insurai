@@ -46,13 +46,17 @@ public class AppointmentController {
      * PUT /api/appointments/{id}/approve
      */
     @PutMapping("/{id}/approve")
-    @PreAuthorize("hasRole('AGENT')")
+    @PreAuthorize("hasAnyRole('AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<AppointmentDecisionResponse> approveAppointment(
             @PathVariable Long id,
-            @RequestBody ApprovalRequest request) {
+            @RequestBody ApprovalRequest request,
+            @com.insurai.security.CurrentUser com.insurai.model.User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
         AppointmentDecisionResponse response = appointmentWorkflowService.approveMeeting(
                 id,
-                request.getAgentId(),
+                currentUser.getId(),
                 request.getNotes());
         return ResponseEntity.ok(response);
     }
@@ -62,13 +66,17 @@ public class AppointmentController {
      * PUT /api/appointments/{id}/reject
      */
     @PutMapping("/{id}/reject")
-    @PreAuthorize("hasRole('AGENT')")
+    @PreAuthorize("hasAnyRole('AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<AppointmentDecisionResponse> rejectAppointment(
             @PathVariable Long id,
-            @RequestBody RejectionRequest request) {
+            @RequestBody RejectionRequest request,
+            @com.insurai.security.CurrentUser com.insurai.model.User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
         AppointmentDecisionResponse response = appointmentWorkflowService.rejectAppointment(
                 id,
-                request.getAgentId(),
+                currentUser.getId(),
                 request.getRejectionReason(),
                 request.isIncludeAIRecommendations());
         return ResponseEntity.ok(response);
@@ -79,13 +87,17 @@ public class AppointmentController {
      * PUT /api/appointments/{id}/complete
      */
     @PutMapping("/{id}/complete")
-    @PreAuthorize("hasRole('AGENT')")
+    @PreAuthorize("hasAnyRole('AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<AppointmentDecisionResponse> completeAppointment(
             @PathVariable Long id,
-            @RequestBody CompletionRequest request) {
+            @RequestBody CompletionRequest request,
+            @com.insurai.security.CurrentUser com.insurai.model.User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
         AppointmentDecisionResponse response = appointmentWorkflowService.markAsCompleted(
                 id,
-                request.getAgentId(),
+                currentUser.getId(),
                 request.getConsultationNotes());
         return ResponseEntity.ok(response);
     }
@@ -95,7 +107,7 @@ public class AppointmentController {
      * GET /api/appointments/{id}/meeting-link
      */
     @GetMapping("/{id}/meeting-link")
-    @PreAuthorize("hasAnyRole('USER', 'AGENT')")
+    @PreAuthorize("hasAnyRole('USER', 'AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<MeetingLinkResponse> getMeetingLink(@PathVariable Long id) {
         AppointmentDecisionResponse appointment = appointmentWorkflowService.getAppointmentWithAIInsights(id);
 
@@ -112,13 +124,17 @@ public class AppointmentController {
      * PUT /api/appointments/{id}/approve-policy
      */
     @PutMapping("/{id}/approve-policy")
-    @PreAuthorize("hasRole('AGENT')")
+    @PreAuthorize("hasAnyRole('AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<AppointmentDecisionResponse> approvePolicy(
             @PathVariable Long id,
-            @RequestBody PolicyApprovalRequest request) {
+            @RequestBody PolicyApprovalRequest request,
+            @com.insurai.security.CurrentUser com.insurai.model.User currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
         AppointmentDecisionResponse response = appointmentWorkflowService.approvePolicy(
                 id,
-                request.getAgentId(),
+                currentUser.getId(),
                 request.getApprovalNotes());
         return ResponseEntity.ok(response);
     }

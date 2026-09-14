@@ -200,10 +200,8 @@ public class EmailService {
 
         } catch (MessagingException e) {
             logger.error("Failed to send email to: {}", to, e);
-            throw new RuntimeException("Email sending failed", e);
         } catch (Exception e) {
             logger.error("Unexpected error sending email to: {}", to, e);
-            throw new RuntimeException("Email sending failed", e);
         }
     }
 
