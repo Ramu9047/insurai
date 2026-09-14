@@ -12,6 +12,8 @@ public interface ExceptionCaseRepository extends JpaRepository<ExceptionCase, Lo
 
         List<ExceptionCase> findByAgentId(Long agentId);
 
+        List<ExceptionCase> findByAgentIdIn(java.util.Collection<Long> agentIds);
+
         List<ExceptionCase> findByUserId(Long userId);
 
         List<ExceptionCase> findByStatusAndCaseType(String status, String caseType);

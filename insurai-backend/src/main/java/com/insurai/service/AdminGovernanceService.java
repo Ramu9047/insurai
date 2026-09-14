@@ -342,8 +342,42 @@ public class AdminGovernanceService {
                 List<User> agents = companyId != null ? userRepository.findByCompanyIdAndRole(companyId, "AGENT")
                                 : userRepository.findByRole("AGENT");
 
+                if (agents.isEmpty()) {
+                        return Collections.emptyList();
+                }
+
+                List<Long> agentIds = agents.stream().map(User::getId).collect(Collectors.toList());
+
+                // Batch fetch all bookings for all agents in 1 single query
+                List<Booking> allBookings = bookingRepository.findByAgentIdIn(agentIds);
+                Map<Long, List<Booking>> bookingsByAgent = allBookings.stream()
+                                .filter(b -> b.getAgent() != null)
+                                .collect(Collectors.groupingBy(b -> b.getAgent().getId()));
+
+                // Batch fetch all exception cases for all agents in 1 single query
+                List<ExceptionCase> allExceptions = exceptionCaseRepository.findByAgentIdIn(agentIds);
+                Map<Long, List<ExceptionCase>> exceptionsByAgent = allExceptions.stream()
+                                .filter(ec -> ec.getAgent() != null)
+                                .collect(Collectors.groupingBy(ec -> ec.getAgent().getId()));
+
+                // Collect all user IDs from all bookings across agents
+                Set<Long> allUserIds = allBookings.stream()
+                                .map(b -> b.getUser() != null ? b.getUser().getId() : null)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet());
+
+                // Batch fetch all user policies in 1 single query
+                List<UserPolicy> allUserPolicies = allUserIds.isEmpty() ? Collections.emptyList()
+                                : userPolicyRepository.findByUserIdIn(allUserIds);
+                Map<Long, List<UserPolicy>> userPoliciesByUserId = allUserPolicies.stream()
+                                .filter(up -> up.getUser() != null)
+                                .collect(Collectors.groupingBy(up -> up.getUser().getId()));
+
                 return agents.stream()
-                                .map(this::mapToAgentGovernanceDTO)
+                                .map(agent -> mapToAgentGovernanceDTOFast(agent,
+                                                bookingsByAgent.getOrDefault(agent.getId(), Collections.emptyList()),
+                                                exceptionsByAgent.getOrDefault(agent.getId(), Collections.emptyList()),
+                                                userPoliciesByUserId))
                                 .collect(Collectors.toList());
         }
 
@@ -358,10 +392,25 @@ public class AdminGovernanceService {
                         throw new RuntimeException("User is not an agent");
                 }
 
-                return mapToAgentGovernanceDTO(agent);
+                List<Long> agentIds = Collections.singletonList(agentId);
+                List<Booking> bookings = bookingRepository.findByAgentIdIn(agentIds);
+                List<ExceptionCase> exceptions = exceptionCaseRepository.findByAgentIdIn(agentIds);
+
+                Set<Long> userIds = bookings.stream()
+                                .map(b -> b.getUser() != null ? b.getUser().getId() : null)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet());
+
+                Map<Long, List<UserPolicy>> userPoliciesByUserId = userIds.isEmpty() ? Collections.emptyMap()
+                                : userPolicyRepository.findByUserIdIn(userIds).stream()
+                                                .filter(up -> up.getUser() != null)
+                                                .collect(Collectors.groupingBy(up -> up.getUser().getId()));
+
+                return mapToAgentGovernanceDTOFast(agent, bookings, exceptions, userPoliciesByUserId);
         }
 
-        private AgentGovernanceDTO mapToAgentGovernanceDTO(User agent) {
+        private AgentGovernanceDTO mapToAgentGovernanceDTOFast(User agent, List<Booking> agentBookings,
+                        List<ExceptionCase> agentExceptions, Map<Long, List<UserPolicy>> userPoliciesByUserId) {
                 AgentGovernanceDTO dto = new AgentGovernanceDTO();
 
                 dto.setAgentId(agent.getId());
@@ -381,16 +430,18 @@ public class AdminGovernanceService {
                 dto.setDeactivationReason(agent.getDeactivationReason());
 
                 // Performance metrics
-                List<Booking> agentBookings = bookingRepository.findByAgentId(agent.getId());
                 dto.setTotalConsultations(agentBookings.size());
                 dto.setPendingConsultations((int) agentBookings.stream()
                                 .filter(b -> "PENDING".equals(b.getStatus()))
                                 .count());
 
-                List<UserPolicy> agentPolicies = userPolicyRepository.findAll().stream()
-                                .filter(up -> up.getUser() != null &&
-                                                agentBookings.stream().anyMatch(b -> b.getUser() != null &&
-                                                                b.getUser().getId().equals(up.getUser().getId())))
+                Set<Long> userIds = agentBookings.stream()
+                                .map(b -> b.getUser() != null ? b.getUser().getId() : null)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet());
+
+                List<UserPolicy> agentPolicies = userIds.stream()
+                                .flatMap(uid -> userPoliciesByUserId.getOrDefault(uid, Collections.emptyList()).stream())
                                 .collect(Collectors.toList());
 
                 if (!agentPolicies.isEmpty()) {
@@ -410,13 +461,13 @@ public class AdminGovernanceService {
                                 .count());
 
                 // Exception flags
-                dto.setMisconductFlags((int) exceptionCaseRepository.findByAgentId(agent.getId()).stream()
+                dto.setMisconductFlags((int) agentExceptions.stream()
                                 .filter(ec -> "AGENT_MISCONDUCT".equals(ec.getCaseType()))
                                 .count());
-                dto.setEscalatedCases((int) exceptionCaseRepository.findByAgentId(agent.getId()).stream()
+                dto.setEscalatedCases((int) agentExceptions.stream()
                                 .filter(ec -> "ESCALATED_REJECTION".equals(ec.getCaseType()))
                                 .count());
-                dto.setDisputedClaims((int) exceptionCaseRepository.findByAgentId(agent.getId()).stream()
+                dto.setDisputedClaims((int) agentExceptions.stream()
                                 .filter(ec -> "DISPUTED_CLAIM".equals(ec.getCaseType()))
                                 .count());
 

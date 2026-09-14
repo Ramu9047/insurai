@@ -9,6 +9,8 @@ import java.util.List;
 public interface UserPolicyRepository extends JpaRepository<UserPolicy, Long> {
     List<UserPolicy> findByUserId(Long userId);
 
+    List<UserPolicy> findByUserIdIn(java.util.Collection<Long> userIds);
+
     Page<UserPolicy> findByUserId(Long userId, Pageable pageable);
 
     List<UserPolicy> findByStatus(String status);

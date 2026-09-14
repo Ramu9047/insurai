@@ -16,9 +16,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem("insurai_user");
-      localStorage.removeItem("insurai_token");
-      window.location.href = "/login";
+      const isAuthEndpoint = error.config?.url?.includes("/auth/");
+      if (!isAuthEndpoint) {
+        localStorage.removeItem("insurai_user");
+        localStorage.removeItem("insurai_token");
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
+      }
     }
     return Promise.reject(error);
   }
