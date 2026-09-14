@@ -204,6 +204,7 @@ public class DataSeeder implements CommandLineRunner {
                                         "Acts of war or terrorism excluded", "Self-inflicted injuries"));
                         pol.setWarnings(Arrays.asList("Read the fine print regarding waiting periods.",
                                         "Claim intimation must be within 48 hours."));
+                        pol.setStatus("ACTIVE");
                         pol.setCompany(co);
                         allPolicies.add(policyRepo.save(pol));
                 }
