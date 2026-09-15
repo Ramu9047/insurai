@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
  */
 @RestController
 @RequestMapping("/api/appointments")
-@CrossOrigin(origins = "*")
 public class AppointmentController {
 
     private final AppointmentWorkflowService appointmentWorkflowService;

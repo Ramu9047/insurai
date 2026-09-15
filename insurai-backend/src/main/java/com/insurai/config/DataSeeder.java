@@ -2,7 +2,11 @@ package com.insurai.config;
 
 import com.insurai.model.*;
 import com.insurai.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -16,11 +20,15 @@ import java.util.*;
  * Seeds: 1 SuperAdmin, 11 Companies + 11 CompanyAdmins,
  * 100 Agents, 250 Users, plus policies for all companies.
  * Populates every table in the schema.
- * Guard: only runs when DB is empty (userRepo.count() == 0).
+ * Guard: only runs when DB is empty (userRepo.count() == 0),
+ * app.seed.enabled is true, and profile is not prod.
  */
 @Component
 @Order(1)
+@Profile("!prod")
 public class DataSeeder implements CommandLineRunner {
+
+        private static final Logger logger = LoggerFactory.getLogger(DataSeeder.class);
 
         private final PolicyRepository policyRepo;
         private final UserRepository userRepo;
@@ -37,6 +45,9 @@ public class DataSeeder implements CommandLineRunner {
         private final DocumentRepository docRepo;
         private final NotificationRepository notifRepo;
         private final PasswordEncoder passwordEncoder;
+
+        @Value("${app.seed.enabled:true}")
+        private boolean seedEnabled;
 
         // Passwords
         private static final String PWD_SUPER = "sUpEr@123";
@@ -77,11 +88,15 @@ public class DataSeeder implements CommandLineRunner {
         @Transactional
         @SuppressWarnings("null")
         public void run(String... args) throws Exception {
-                if (userRepo.count() > 0) {
-                        System.out.println("DataSeeder: data already present – skipping.");
+                if (!seedEnabled) {
+                        logger.info("DataSeeder: app.seed.enabled is false – skipping data seeding.");
                         return;
                 }
-                System.out.println("DataSeeder: clean DB – seeding full dataset for all tables...");
+                if (userRepo.count() > 0) {
+                        logger.info("DataSeeder: data already present – skipping.");
+                        return;
+                }
+                logger.info("DataSeeder: clean DB – seeding full dataset for all tables...");
 
                 LocalDateTime now = LocalDateTime.now();
 
@@ -89,7 +104,7 @@ public class DataSeeder implements CommandLineRunner {
                 User superAdmin = userRepo.save(makeUser(
                                 "Super Admin", "superadmin@insurai.com", PWD_SUPER, "SUPER_ADMIN",
                                 40, "Mumbai", null, null, null));
-                System.out.println("SuperAdmin seeded.");
+                logger.info("SuperAdmin seeded.");
 
                 // 2. COMPANIES
                 Company[] companies = {
@@ -127,7 +142,7 @@ public class DataSeeder implements CommandLineRunner {
                                                 "Aditya Birla Health Insurance – ReActivate wellness benefit.",
                                                 "Mumbai", "1800-270-7000"),
                 };
-                System.out.println("Companies seeded (11).");
+                logger.info("Companies seeded (11).");
 
                 // 3. POLICIES
                 List<Policy> allPolicies = new ArrayList<>();
@@ -208,7 +223,7 @@ public class DataSeeder implements CommandLineRunner {
                         pol.setCompany(co);
                         allPolicies.add(policyRepo.save(pol));
                 }
-                System.out.println("Policies seeded (55).");
+                logger.info("Policies seeded (55).");
 
                 // 4. COMPANY ADMINS
                 String[][] caData = {
@@ -491,11 +506,11 @@ public class DataSeeder implements CommandLineRunner {
                 }
                 notifRepo.saveAll(notifications);
 
-                System.out.println("\n=== DataSeeder COMPLETE ===");
-                System.out.println("SuperAdmin  : superadmin@insurai.com / sUpEr@123");
-                System.out.println("CompanyAdmin: ca.lic@insurai.com / cOmPaNy@123");
-                System.out.println("Agents      : agent1@insurai.com .. / aGeNt@123");
-                System.out.println("Users       : user1@insurai.com .. / uSeR@123");
+                logger.info("=== DataSeeder COMPLETE ===");
+                logger.info("SuperAdmin  : superadmin@insurai.com / sUpEr@123");
+                logger.info("CompanyAdmin: ca.lic@insurai.com / cOmPaNy@123");
+                logger.info("Agents      : agent1@insurai.com .. / aGeNt@123");
+                logger.info("Users       : user1@insurai.com .. / uSeR@123");
         }
 
         private Company saveCompany(String name, String email, String reg, String desc, String city, String phone) {

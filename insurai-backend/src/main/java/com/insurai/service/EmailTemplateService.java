@@ -3,6 +3,7 @@ package com.insurai.service;
 import com.insurai.model.Booking;
 import com.insurai.model.Policy;
 import com.insurai.model.UserPolicy;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -17,6 +18,12 @@ public class EmailTemplateService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter
             .ofPattern("EEEE, MMMM dd, yyyy 'at' hh:mm a");
+
+    private final String frontendUrl;
+
+    public EmailTemplateService(@Value("${app.frontend.url:http://localhost:3000}") String frontendUrl) {
+        this.frontendUrl = frontendUrl.endsWith("/") ? frontendUrl.substring(0, frontendUrl.length() - 1) : frontendUrl;
+    }
 
     /**
      * Appointment Confirmation Template (New)
@@ -193,7 +200,7 @@ public class EmailTemplateService {
                 </html>
                 """
                 .formatted(userName, agentName, dateTime, meetingLink,
-                        "http://localhost:3000/appointments/" + appointmentId);
+                        frontendUrl + "/appointments/" + appointmentId);
     }
 
     /**
@@ -301,7 +308,8 @@ public class EmailTemplateService {
                             <p>We encourage you to explore these alternative options that may better suit your needs.</p>
 
                             <center>
-                                <a href="http://localhost:3000/policies" class="button">Browse Policies</a>
+                                <a href=""" + frontendUrl + """
+/policies" class="button">Browse Policies</a>
                             </center>
                         </div>
                         <div class="footer">
@@ -415,7 +423,8 @@ public class EmailTemplateService {
                             </ol>
 
                             <center>
-                                <a href="http://localhost:3000/payment/%s" class="button">Complete Payment</a>
+                                <a href=""" + frontendUrl + """
+/payment/%s" class="button">Complete Payment</a>
                             </center>
 
                             <p style="margin-top: 30px; font-size: 14px; color: #666;">
@@ -535,7 +544,8 @@ public class EmailTemplateService {
                             <p>Your feedback helps us recognize great agents and improve our service.</p>
 
                             <center>
-                                <a href="http://localhost:3000/review/%s" class="button">Submit Review</a>
+                                <a href=""" + frontendUrl + """
+/review/%s" class="button">Submit Review</a>
                             </center>
                         </div>
                         <div class="footer">

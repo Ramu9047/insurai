@@ -11,7 +11,6 @@ import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:3000")
 public class EnterpriseDashboardController {
 
     private final UserRepository userRepo;

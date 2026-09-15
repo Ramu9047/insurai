@@ -1,19 +1,37 @@
 package com.insurai.dto;
 
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
  * Policy Filter Request DTO
  */
 public class PolicyFilterRequest {
+    @Size(max = 50, message = "Type cannot exceed 50 characters")
     private String type;
+
+    @Size(max = 50, message = "Category cannot exceed 50 characters")
     private String category;
+
+    @PositiveOrZero(message = "Min premium must be positive or zero")
     private Double minPremium;
+
+    @PositiveOrZero(message = "Max premium must be positive or zero")
     private Double maxPremium;
+
+    @PositiveOrZero(message = "Min coverage must be positive or zero")
     private Double minCoverage;
+
+    @PositiveOrZero(message = "Max coverage must be positive or zero")
     private Double maxCoverage;
+
     private List<String> features;
+
+    @Size(max = 50, message = "Sort field cannot exceed 50 characters")
     private String sortBy;
+
+    @Size(max = 10, message = "Sort order cannot exceed 10 characters")
     private String sortOrder;
 
     // Getters and Setters

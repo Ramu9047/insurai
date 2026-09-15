@@ -18,7 +18,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/policies")
-@CrossOrigin(origins = "http://localhost:3000")
 public class PolicyController {
 
     private final UserRepository userRepo;
@@ -97,7 +96,7 @@ public class PolicyController {
     public UserPolicy quotePolicy(
             @PathVariable long policyId,
             @PathVariable long userId,
-            @RequestBody(required = false) com.insurai.dto.QuoteRequest request,
+            @jakarta.validation.Valid @RequestBody(required = false) com.insurai.dto.QuoteRequest request,
             @CurrentUser User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
@@ -203,7 +202,7 @@ public class PolicyController {
     @PreAuthorize("hasAnyRole('USER', 'AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
     public List<com.insurai.dto.PolicyRecommendationDTO> filterPolicies(
             @PathVariable long userId,
-            @RequestBody com.insurai.dto.PolicyFilterRequest filter,
+            @jakarta.validation.Valid @RequestBody com.insurai.dto.PolicyFilterRequest filter,
             @CurrentUser User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");

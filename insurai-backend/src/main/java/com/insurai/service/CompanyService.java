@@ -4,6 +4,8 @@ import com.insurai.model.Company;
 import com.insurai.model.Policy;
 import com.insurai.repository.CompanyRepository;
 import com.insurai.repository.PolicyRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,8 @@ import java.util.List;
 
 @Service
 public class CompanyService {
+
+    private static final Logger logger = LoggerFactory.getLogger(CompanyService.class);
 
     @Autowired
     private CompanyRepository companyRepository;
@@ -63,7 +67,7 @@ public class CompanyService {
      * Get company by email
      */
     public Company getCompanyByEmail(String identifier) {
-        System.out.println("DEBUG: Looking up company for: " + identifier);
+        logger.debug("Looking up company for: {}", identifier);
         return companyRepository.findFirstByEmailIgnoreCase(identifier)
                 .or(() -> companyRepository.findFirstByName(identifier))
                 .or(() -> companyRepository.findFirstByNameIgnoreCase(identifier))

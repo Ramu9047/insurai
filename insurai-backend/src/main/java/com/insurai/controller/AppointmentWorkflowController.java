@@ -19,7 +19,6 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/appointment-workflow")
-@CrossOrigin(origins = "http://localhost:3000")
 public class AppointmentWorkflowController {
 
     private final AppointmentWorkflowService workflowService;

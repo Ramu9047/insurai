@@ -1,10 +1,19 @@
 package com.insurai.dto;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 public class BookingRequest {
 
+    @NotNull(message = "User ID is required")
     private Long userId;
+
     private Long agentId;
+
+    @Size(max = 100, message = "Start time format invalid or too long")
     private String start;
+
+    @Size(max = 100, message = "End time format invalid or too long")
     private String end;
 
     public Long getUserId() {

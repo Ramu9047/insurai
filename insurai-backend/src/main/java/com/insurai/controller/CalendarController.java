@@ -19,7 +19,6 @@ import java.time.format.DateTimeFormatter;
  */
 @RestController
 @RequestMapping("/api/calendar")
-@CrossOrigin(origins = "*")
 public class CalendarController {
 
     private final BookingRepository bookingRepository;

@@ -1,6 +1,8 @@
 package com.insurai.service;
 
 import com.insurai.repository.BookingRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +11,8 @@ import java.time.LocalDateTime;
 
 @Service
 public class SchedulerService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SchedulerService.class);
 
     private final BookingRepository bookingRepo;
 
@@ -29,10 +33,10 @@ public class SchedulerService {
         int expiredApproved = bookingRepo.expireUnattended(now);
 
         if (expiredPending > 0 || expiredApproved > 0) {
-            System.out.println("SYSTEM_AUTO_EXPIRED: Time slot exceeded. Expired Pending: " + expiredPending
-                    + ", Expired Approved: " + expiredApproved + " at " + now);
+            logger.info("SYSTEM_AUTO_EXPIRED: Time slot exceeded. Expired Pending: {}, Expired Approved: {} at {}",
+                    expiredPending, expiredApproved, now);
         } else {
-            System.out.println("Scheduler run: No expirations at " + now);
+            logger.debug("Scheduler run: No expirations at {}", now);
         }
     }
 }

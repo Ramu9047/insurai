@@ -11,6 +11,8 @@ import com.insurai.repository.BookingRepository;
 import com.insurai.repository.PolicyRepository;
 import com.insurai.repository.UserPolicyRepository;
 import com.insurai.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,6 +28,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class AgentConsultationService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AgentConsultationService.class);
 
     private final BookingRepository bookingRepo;
     private final UserRepository userRepo;
@@ -359,8 +363,8 @@ public class AgentConsultationService {
         performance.setAgentName(agent.getName());
         performance.setAssignedRegions(agent.getAssignedRegions());
         performance.setAssignedPolicyTypes(agent.getAssignedPolicyTypes());
-        System.out.println("DEBUG: Performance assignments for " + agent.getName() + ": Regions="
-                + agent.getAssignedRegions() + ", Types=" + agent.getAssignedPolicyTypes());
+        logger.debug("Performance assignments for {}: Regions={}, Types={}",
+                agent.getName(), agent.getAssignedRegions(), agent.getAssignedPolicyTypes());
 
         // Populate Rating
         performance.setCustomerSatisfaction(agent.getRating() != null ? agent.getRating() : 0.0);

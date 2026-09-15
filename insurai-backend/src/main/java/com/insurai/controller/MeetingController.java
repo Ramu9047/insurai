@@ -15,7 +15,6 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @RestController
 @RequestMapping("/api/meeting")
-@CrossOrigin(origins = "*")
 public class MeetingController {
 
     private final GoogleCalendarService calendarService;

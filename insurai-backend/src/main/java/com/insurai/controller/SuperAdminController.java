@@ -18,11 +18,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/super-admin")
-@CrossOrigin(origins = "http://localhost:3000")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
 public class SuperAdminController {
+
+    private static final Logger logger = LoggerFactory.getLogger(SuperAdminController.class);
 
     @Autowired
     private CompanyService companyService;
@@ -119,7 +123,7 @@ public class SuperAdminController {
     @PutMapping("/policies/{policyId}/suspend")
     public ResponseEntity<?> suspendPolicy(@PathVariable long policyId, @RequestBody Map<String, String> payload) {
         String reason = payload.get("reason");
-        System.out.println("Suspending Policy " + policyId + " due to: " + reason);
+        logger.warn("Suspending Policy {} due to: {}", policyId, reason);
         com.insurai.model.Policy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Policy not found"));
 

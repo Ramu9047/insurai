@@ -16,7 +16,6 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/booking-lifecycle")
-@CrossOrigin(origins = "http://localhost:3000")
 public class BookingLifecycleController {
 
     private final BookingLifecycleService lifecycleService;

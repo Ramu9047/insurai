@@ -15,7 +15,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/reminders")
-@CrossOrigin(origins = "*")
 public class SmartReminderController {
 
     @Autowired

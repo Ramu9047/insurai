@@ -22,15 +22,19 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:3000")
 public class DocumentController {
 
     private final DocumentRepository documentRepo;
     private final UserRepository userRepo;
+    private final com.insurai.service.FileStorageService fileStorageService;
 
-    public DocumentController(DocumentRepository documentRepo, UserRepository userRepo) {
+    public DocumentController(
+            DocumentRepository documentRepo,
+            UserRepository userRepo,
+            com.insurai.service.FileStorageService fileStorageService) {
         this.documentRepo = documentRepo;
         this.userRepo = userRepo;
+        this.fileStorageService = fileStorageService;
     }
 
     // --- User Endpoints ---
@@ -68,35 +72,7 @@ public class DocumentController {
         User user = userRepo.findById(java.util.Objects.requireNonNull(userId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        if (file.isEmpty())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Empty file");
-
-        String originalName = file.getOriginalFilename();
-        if (originalName == null || originalName.trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid filename");
-        }
-
-        // Sanitize filename to prevent path traversal
-        String safeName = Paths.get(originalName).getFileName().toString().replaceAll("[^a-zA-Z0-9._-]", "_");
-        String ext = "";
-        int dotIdx = safeName.lastIndexOf('.');
-        if (dotIdx > 0) {
-            ext = safeName.substring(dotIdx + 1).toLowerCase();
-        }
-
-        List<String> allowedExtensions = List.of("pdf", "jpg", "jpeg", "png", "doc", "docx");
-        if (!allowedExtensions.contains(ext)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported file format. Allowed: pdf, jpg, jpeg, png, doc, docx");
-        }
-
-        String fileName = System.currentTimeMillis() + "_" + safeName;
-        Path uploadsDir = Paths.get("uploads").toAbsolutePath().normalize();
-        Path path = uploadsDir.resolve(fileName).normalize();
-        if (!path.startsWith(uploadsDir)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid upload path");
-        }
-        Files.createDirectories(path.getParent());
-        Files.copy(file.getInputStream(), path);
+        String fileUrl = fileStorageService.storeFile(file);
 
         Document doc = new Document();
         doc.setUser(user);
@@ -104,7 +80,7 @@ public class DocumentController {
         doc.setFilename(file.getOriginalFilename());
         doc.setType(type);
         doc.setStatus("PENDING");
-        doc.setUrl("http://localhost:8080/uploads/" + fileName);
+        doc.setUrl(fileUrl);
         doc.setSize(file.getSize());
 
         return documentRepo.save(doc);

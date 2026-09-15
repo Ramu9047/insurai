@@ -2,6 +2,8 @@ package com.insurai.controller;
 
 import com.insurai.config.DataSeeder;
 import com.insurai.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin")
 public class ResetController {
+
+    private static final Logger logger = LoggerFactory.getLogger(ResetController.class);
 
     private final AuditLogRepository auditLogRepo;
     private final FeedbackRepository feedbackRepo;
@@ -68,7 +72,7 @@ public class ResetController {
     public ResponseEntity<Map<String, Object>> resetDatabase() {
         Map<String, Object> result = new LinkedHashMap<>();
         try {
-            System.out.println("🗑  ResetController: Starting full database wipe...");
+            logger.info("ResetController: Starting full database wipe...");
 
             // Delete in reverse dependency order (children before parents)
             auditLogRepo.deleteAll();
@@ -90,7 +94,7 @@ public class ResetController {
             companyRepo.deleteAll();
             userRepo.deleteAll();
 
-            System.out.println("✅ All tables cleared. Re-seeding...");
+            logger.info("All tables cleared. Re-seeding...");
 
             // Re-seed
             dataSeeder.run();

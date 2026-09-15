@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/bookings")
-@CrossOrigin(origins = "http://localhost:3000")
 public class BookingController {
 
     private final BookingService bookingService;
@@ -36,7 +35,7 @@ public class BookingController {
     // Access rule: USER can create booking for themselves; SUPER_ADMIN can create for anyone
     @PostMapping
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('USER','SUPER_ADMIN')")
-    public Booking create(@RequestBody BookingRequest request, org.springframework.security.core.Authentication auth) {
+    public Booking create(@jakarta.validation.Valid @RequestBody BookingRequest request, org.springframework.security.core.Authentication auth) {
         Long userId = request.getUserId();
         Long agentId = request.getAgentId();
 

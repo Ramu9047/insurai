@@ -12,8 +12,7 @@ import org.springframework.web.bind.annotation.*;
  * Provides endpoints for AI-driven risk scoring and eligibility prediction
  */
 @RestController
-@RequestMapping("/api/ai")
-@CrossOrigin(origins = "*")
+@RequestMapping("/api/risk-assessment")
 public class AIRiskAssessmentController {
 
     @Autowired

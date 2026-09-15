@@ -7,7 +7,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/query")
-@CrossOrigin(origins = "http://localhost:3000")
 public class QueryController {
 
     private final QueryService queryService;

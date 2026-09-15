@@ -1,17 +1,35 @@
 package com.insurai.dto;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+
 /**
  * Quote Request DTO
  */
 public class QuoteRequest {
     private Long userId;
     private Long policyId;
+
+    @Min(value = 0, message = "Age cannot be negative")
     private Integer age;
+
+    @Size(max = 500, message = "Health info cannot exceed 500 characters")
     private String healthInfo;
+
+    @PositiveOrZero(message = "Income must be positive or zero")
     private Double income;
+
+    @Min(value = 0, message = "Dependents count cannot be negative")
     private Integer dependents;
+
+    @Size(max = 100, message = "Occupation cannot exceed 100 characters")
     private String occupation;
+
+    @Size(max = 50, message = "Smoking status cannot exceed 50 characters")
     private String smokingStatus;
+
+    @Size(max = 500, message = "Note cannot exceed 500 characters")
     private String note;
 
     // Getters and Setters

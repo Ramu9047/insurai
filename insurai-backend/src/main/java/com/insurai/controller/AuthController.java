@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:3000")
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
@@ -27,19 +26,22 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
     private final com.insurai.service.NotificationService notificationService;
+    private final String frontendUrl;
 
     public AuthController(UserRepository userRepository,
             com.insurai.repository.CompanyRepository companyRepository,
             org.springframework.security.crypto.password.PasswordEncoder passwordEncoder,
             JwtTokenProvider jwtTokenProvider,
             EmailService emailService,
-            com.insurai.service.NotificationService notificationService) {
+            com.insurai.service.NotificationService notificationService,
+            @org.springframework.beans.factory.annotation.Value("${app.frontend.url:http://localhost:3000}") String frontendUrl) {
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.emailService = emailService;
         this.notificationService = notificationService;
+        this.frontendUrl = frontendUrl.endsWith("/") ? frontendUrl.substring(0, frontendUrl.length() - 1) : frontendUrl;
     }
 
     @PostMapping("/register")
@@ -174,7 +176,7 @@ public class AuthController {
             u.setResetTokenExpiry(java.time.LocalDateTime.now().plusMinutes(30));
             userRepository.save(u);
 
-            String link = "http://localhost:3000/reset-password?token=" + token;
+            String link = frontendUrl + "/reset-password?token=" + token;
             try {
                 emailService.send(email, "Reset Your Password", "Click here to reset: " + link);
             } catch (Exception e) {

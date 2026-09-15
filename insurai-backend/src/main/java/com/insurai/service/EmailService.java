@@ -27,10 +27,15 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
     private final EmailTemplateService templateService;
+    private final String frontendUrl;
 
-    public EmailService(JavaMailSender mailSender, EmailTemplateService templateService) {
+    public EmailService(
+            JavaMailSender mailSender,
+            EmailTemplateService templateService,
+            @org.springframework.beans.factory.annotation.Value("${app.frontend.url:http://localhost:3000}") String frontendUrl) {
         this.mailSender = mailSender;
         this.templateService = templateService;
+        this.frontendUrl = frontendUrl.endsWith("/") ? frontendUrl.substring(0, frontendUrl.length() - 1) : frontendUrl;
     }
 
     /**
@@ -296,7 +301,8 @@ public class EmailService {
                             </div>
 
                             <center>
-                                <a href="http://localhost:3000/policies" class="button">Browse Policies</a>
+                                <a href=""" + frontendUrl + """
+/policies" class="button">Browse Policies</a>
                             </center>
 
                             <p style="margin-top: 30px;">

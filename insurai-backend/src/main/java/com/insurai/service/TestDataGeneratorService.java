@@ -132,7 +132,7 @@ public class TestDataGeneratorService {
     }
 
     private void generateUsers() {
-        System.out.println("🌱 Generating Users...");
+        logger.info("Generating Users...");
         for (int i = 1; i <= 100; i++) { // Generate 100 users
             String email = "user" + i + "@test.com";
             if (userRepository.findByEmail(email).isEmpty()) {
@@ -151,7 +151,7 @@ public class TestDataGeneratorService {
     }
 
     private void generateAgents() {
-        System.out.println("🌱 Generating Agents...");
+        logger.info("Generating Agents...");
         for (int i = 1; i <= 50; i++) { // Generate 50 agents
             String email = "agent" + i + "@test.com";
             if (userRepository.findByEmail(email).isEmpty()) {
@@ -185,7 +185,7 @@ public class TestDataGeneratorService {
     }
 
     private void generateWorkflows() {
-        System.out.println("🌱 Generating Workflows (Bookings, Policies, Reviews)...");
+        logger.info("Generating Workflows (Bookings, Policies, Reviews)...");
         List<User> users = userRepository.findByRole("USER");
         List<User> agents = userRepository.findByRole("AGENT");
         List<Policy> policies = policyRepository.findAll();
@@ -275,7 +275,7 @@ public class TestDataGeneratorService {
     }
 
     private void generateFeedback() {
-        System.out.println("🌱 Generating Feedback...");
+        logger.info("Generating Feedback...");
         List<User> users = userRepository.findByRole("USER");
         String[] categories = { "BUG", "QUERY", "SUGGESTION", "COMPLAINT" };
 
