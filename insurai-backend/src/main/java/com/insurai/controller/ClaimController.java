@@ -2,6 +2,7 @@ package com.insurai.controller;
 
 import com.insurai.model.Claim;
 import com.insurai.service.ClaimService;
+import com.insurai.service.FileStorageService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,10 +14,15 @@ public class ClaimController {
 
     private final ClaimService claimService;
     private final com.insurai.repository.UserRepository userRepo;
+    private final FileStorageService fileStorageService;
 
-    public ClaimController(ClaimService claimService, com.insurai.repository.UserRepository userRepo) {
+    public ClaimController(
+            ClaimService claimService,
+            com.insurai.repository.UserRepository userRepo,
+            FileStorageService fileStorageService) {
         this.claimService = claimService;
         this.userRepo = userRepo;
+        this.fileStorageService = fileStorageService;
     }
 
     // User: File a claim
@@ -107,46 +113,7 @@ public class ClaimController {
                     org.springframework.http.HttpStatus.FORBIDDEN, "Access denied: Cannot upload doc to another user's claim");
         }
 
-        try {
-            if (file.isEmpty())
-                throw new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.BAD_REQUEST, "Empty file");
-
-            String rawName = file.getOriginalFilename();
-            if (rawName == null || rawName.trim().isEmpty()) {
-                throw new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid filename");
-            }
-
-            String safeName = java.nio.file.Paths.get(rawName).getFileName().toString().replaceAll("[^a-zA-Z0-9._-]", "_");
-            String ext = "";
-            int dotIdx = safeName.lastIndexOf('.');
-            if (dotIdx > 0) {
-                ext = safeName.substring(dotIdx + 1).toLowerCase();
-            }
-
-            List<String> allowedExtensions = List.of("pdf", "jpg", "jpeg", "png", "doc", "docx");
-            if (!allowedExtensions.contains(ext)) {
-                throw new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.BAD_REQUEST, "Unsupported file format. Allowed: pdf, jpg, jpeg, png, doc, docx");
-            }
-
-            String fileName = System.currentTimeMillis() + "_" + safeName;
-            java.nio.file.Path uploadsDir = java.nio.file.Paths.get("uploads").toAbsolutePath().normalize();
-            java.nio.file.Path path = uploadsDir.resolve(fileName).normalize();
-            if (!path.startsWith(uploadsDir)) {
-                throw new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid upload path");
-            }
-
-            java.nio.file.Files.createDirectories(path.getParent());
-            java.nio.file.Files.copy(file.getInputStream(), path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-            String fileUrl = "http://localhost:8080/uploads/" + fileName;
-            return claimService.uploadDoc(java.util.Objects.requireNonNull(id), fileUrl);
-        } catch (java.io.IOException e) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload claim document", e);
-        }
+        String fileUrl = fileStorageService.storeFile(file);
+        return claimService.uploadDoc(java.util.Objects.requireNonNull(id), fileUrl);
     }
 }
