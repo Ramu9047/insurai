@@ -1,9 +1,18 @@
 package com.insurai.controller;
 
 import com.insurai.model.Policy;
+import com.insurai.model.User;
 import com.insurai.model.UserPolicy;
+import com.insurai.repository.UserPolicyRepository;
+import com.insurai.repository.UserRepository;
+import com.insurai.security.CurrentUser;
+import com.insurai.service.FileStorageService;
 import com.insurai.service.PolicyService;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -12,117 +21,200 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:3000")
 public class PolicyController {
 
-    private final com.insurai.repository.UserRepository userRepo;
+    private final UserRepository userRepo;
+    private final UserPolicyRepository userPolicyRepo;
     private final PolicyService policyService;
+    private final FileStorageService fileStorageService;
 
-    public PolicyController(PolicyService policyService, com.insurai.repository.UserRepository userRepo) {
+    public PolicyController(
+            PolicyService policyService,
+            UserRepository userRepo,
+            UserPolicyRepository userPolicyRepo,
+            FileStorageService fileStorageService) {
         this.policyService = policyService;
         this.userRepo = userRepo;
+        this.userPolicyRepo = userPolicyRepo;
+        this.fileStorageService = fileStorageService;
     }
 
-    private com.insurai.model.User getCurrentUser() {
+    private User getCurrentUser() {
         org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
                 .getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
             return null;
         }
-        // Assuming principal is email (from JwtTokenProvider)
-        // or we can cast principal if it's UserDetails
-        String email = (String) auth.getPrincipal(); // Check JwtTokenProvider implementation
-        // Actually JwtTokenProvider often sets email as principal
+        String email = (String) auth.getPrincipal();
         return userRepo.findByEmail(email).orElse(null);
     }
 
     @GetMapping
     public List<Policy> getAll() {
-        com.insurai.model.User user = getCurrentUser();
+        User user = getCurrentUser();
         String role = (user != null) ? user.getRole() : "USER";
         long userId = (user != null && user.getId() != null) ? user.getId() : 0L;
         return policyService.getAll(role, userId);
     }
 
     @PostMapping
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('COMPANY', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('COMPANY', 'SUPER_ADMIN')")
     public Policy create(@RequestBody Policy policy) {
         return policyService.create(java.util.Objects.requireNonNull(policy), getCurrentUser());
     }
 
     @PutMapping("/{id}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('COMPANY', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('COMPANY', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
     public Policy update(@PathVariable long id, @RequestBody Policy policy) {
-        return policyService.update(id, java.util.Objects.requireNonNull(policy),
-                getCurrentUser());
+        return policyService.update(id, java.util.Objects.requireNonNull(policy), getCurrentUser());
     }
 
     @DeleteMapping("/{id}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('COMPANY', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('COMPANY', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
     public void delete(@PathVariable long id) {
         policyService.delete(id, getCurrentUser());
     }
 
     @PostMapping("/{policyId}/buy/{userId}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('USER')")
-    public UserPolicy buyPolicy(@PathVariable long policyId, @PathVariable long userId) {
+    @PreAuthorize("hasAnyRole('USER', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
+    public UserPolicy buyPolicy(
+            @PathVariable long policyId,
+            @PathVariable long userId,
+            @CurrentUser User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        // Ownership check: Standard users can only buy policies for themselves. SUPER_ADMIN and COMPANY_ADMIN roles are privileged overrides.
+        boolean isPrivileged = currentUser.getRole() != null &&
+                ("SUPER_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "COMPANY_ADMIN".equalsIgnoreCase(currentUser.getRole()));
+        if (!currentUser.getId().equals(userId) && !isPrivileged) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot buy policy for another user");
+        }
+
         return policyService.buyPolicy(policyId, userId);
     }
 
     @PostMapping("/{policyId}/quote/{userId}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('USER')")
-    public UserPolicy quotePolicy(@PathVariable long policyId, @PathVariable long userId,
-            @RequestBody(required = false) com.insurai.dto.QuoteRequest request) {
+    @PreAuthorize("hasAnyRole('USER', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
+    public UserPolicy quotePolicy(
+            @PathVariable long policyId,
+            @PathVariable long userId,
+            @RequestBody(required = false) com.insurai.dto.QuoteRequest request,
+            @CurrentUser User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        // Ownership check: Standard users can only request policy quotes for themselves. SUPER_ADMIN and COMPANY_ADMIN roles are privileged overrides.
+        boolean isPrivileged = currentUser.getRole() != null &&
+                ("SUPER_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "COMPANY_ADMIN".equalsIgnoreCase(currentUser.getRole()));
+        if (!currentUser.getId().equals(userId) && !isPrivileged) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot request quote for another user");
+        }
+
         String note = (request != null) ? request.getNote() : null;
         return policyService.quotePolicy(policyId, userId, note);
     }
 
     @PostMapping("/{userPolicyId}/purchase")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('USER')")
-    public UserPolicy purchasePolicy(@PathVariable long userPolicyId) {
+    @PreAuthorize("hasAnyRole('USER', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
+    public UserPolicy purchasePolicy(
+            @PathVariable long userPolicyId,
+            @CurrentUser User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        UserPolicy userPolicy = userPolicyRepo.findById(userPolicyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User policy not found"));
+
+        // Ownership check: Users can only purchase/activate their own issued user policy. SUPER_ADMIN and COMPANY_ADMIN roles are privileged overrides.
+        boolean isPrivileged = currentUser.getRole() != null &&
+                ("SUPER_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "COMPANY_ADMIN".equalsIgnoreCase(currentUser.getRole()));
+        if (!isPrivileged && (userPolicy.getUser() == null || !currentUser.getId().equals(userPolicy.getUser().getId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot purchase policy for another user");
+        }
+
         return policyService.purchasePolicy(userPolicyId);
     }
 
     @GetMapping("/user/{userId}")
-    public List<UserPolicy> getUserPolicies(@PathVariable long userId) {
+    @PreAuthorize("hasAnyRole('USER', 'AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
+    public List<UserPolicy> getUserPolicies(
+            @PathVariable long userId,
+            @CurrentUser User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        // Ownership check: Users can only view their own user policies. AGENT, SUPER_ADMIN, and COMPANY_ADMIN roles are privileged overrides.
+        boolean isPrivileged = currentUser.getRole() != null &&
+                ("SUPER_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "COMPANY_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "AGENT".equalsIgnoreCase(currentUser.getRole()));
+        if (!currentUser.getId().equals(userId) && !isPrivileged) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot view policies of another user");
+        }
+
         return policyService.getUserPolicies(userId);
     }
 
     @PostMapping("/upload/{userPolicyId}")
-    public UserPolicy uploadDocument(@PathVariable Long userPolicyId,
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
-        try {
-            // Save file locally
-            if (file.isEmpty())
-                throw new RuntimeException("Empty file");
-
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            java.nio.file.Path path = java.nio.file.Paths.get("uploads/" + fileName);
-            java.nio.file.Files.copy(file.getInputStream(), path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-            // Return URL (simulated local URL)
-            String fileUrl = "http://localhost:8080/uploads/" + fileName;
-            return policyService.uploadDocument(userPolicyId, fileUrl);
-
-        } catch (java.io.IOException e) {
-            throw new RuntimeException("Failed to upload file", e);
+    @PreAuthorize("hasAnyRole('USER', 'AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
+    public UserPolicy uploadDocument(
+            @PathVariable Long userPolicyId,
+            @RequestParam("file") MultipartFile file,
+            @CurrentUser User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
+        UserPolicy userPolicy = userPolicyRepo.findById(java.util.Objects.requireNonNull(userPolicyId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User policy not found"));
+
+        // Ownership check: Users can only upload documents to their own user policy. AGENT, SUPER_ADMIN, and COMPANY_ADMIN roles are privileged overrides.
+        boolean isPrivileged = currentUser.getRole() != null &&
+                ("SUPER_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "COMPANY_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "AGENT".equalsIgnoreCase(currentUser.getRole()));
+        if (!isPrivileged && (userPolicy.getUser() == null || !currentUser.getId().equals(userPolicy.getUser().getId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot upload document to another user's policy");
+        }
+
+        String fileUrl = fileStorageService.storeFile(file);
+        return policyService.uploadDocument(userPolicyId, fileUrl);
     }
 
-    // NEW: Get AI-Powered Recommendations
     @GetMapping("/recommendations/{userId}")
-    public List<com.insurai.dto.PolicyRecommendationDTO> getRecommendations(@PathVariable long userId) {
+    @PreAuthorize("hasAnyRole('USER', 'AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
+    public List<com.insurai.dto.PolicyRecommendationDTO> getRecommendations(
+            @PathVariable long userId,
+            @CurrentUser User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        // Ownership check: Users can only view their own policy recommendations. AGENT, SUPER_ADMIN, and COMPANY_ADMIN roles are privileged overrides.
+        boolean isPrivileged = currentUser.getRole() != null &&
+                ("SUPER_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "COMPANY_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "AGENT".equalsIgnoreCase(currentUser.getRole()));
+        if (!currentUser.getId().equals(userId) && !isPrivileged) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot view recommendations for another user");
+        }
+
         return policyService.getRecommendedPolicies(userId);
     }
 
     @GetMapping("/issued")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY')")
     public List<UserPolicy> getAllUserPolicies(org.springframework.security.core.Authentication auth) {
         return policyService.getAllUserPolicies(auth);
     }
 
-    // NEW: Get Filtered Policies
     @PostMapping("/filter/{userId}")
+    @PreAuthorize("hasAnyRole('USER', 'AGENT', 'COMPANY_ADMIN', 'SUPER_ADMIN')")
     public List<com.insurai.dto.PolicyRecommendationDTO> filterPolicies(
             @PathVariable long userId,
-            @RequestBody com.insurai.dto.PolicyFilterRequest filter) {
+            @RequestBody com.insurai.dto.PolicyFilterRequest filter,
+            @CurrentUser User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        // Ownership check: Users can only filter policy recommendations for themselves. AGENT, SUPER_ADMIN, and COMPANY_ADMIN roles are privileged overrides.
+        boolean isPrivileged = currentUser.getRole() != null &&
+                ("SUPER_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "COMPANY_ADMIN".equalsIgnoreCase(currentUser.getRole()) || "AGENT".equalsIgnoreCase(currentUser.getRole()));
+        if (!currentUser.getId().equals(userId) && !isPrivileged) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Cannot filter policies for another user");
+        }
+
         return policyService.getFilteredPolicies(userId, filter);
     }
 }
